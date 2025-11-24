@@ -1,5 +1,6 @@
-function App() {
-  return <div>App</div>;
-}
+import { Button } from "./components/ui/button";
+import Login from "./pages/Login";
 
-export default App;
+export default function App() {
+  return <Login />;
+}
