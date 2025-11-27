@@ -61,7 +61,7 @@ export const updateProfile = async (req, res) => {
       });
 
     // check if user is not admin and trying to update role
-    if (currentLoggedInUser.role !== "admin" && req.body.role)
+    if (currentLoggedInUser.role !== "admin")
       return res.status(401).json({
         success: false,
         message: "Only admin can update the role",
