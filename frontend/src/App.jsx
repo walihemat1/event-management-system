@@ -4,8 +4,9 @@ import Navbar from "./components/layout/Navbar";
 import Home from "./pages/Home";
 import EventsList from "./pages/EventsList";
 import EventDetails from "./pages/EventDetails";
+import Signup from "./pages/Auth/Login";
 import Login from "./pages/Auth/Login";
-import Dashboard from "./features/auth/Dashboard";
+import Dashboard from "./pages/Dashboard/UserDashboard";
 
 export default function App() {
   return (
