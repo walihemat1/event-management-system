@@ -38,14 +38,42 @@ export const createNotification = async (req, res) => {
 };
 
 // Get user notifications
+// export const getUserNotifications = async (req, res) => {
+//   try {
+//     const userId = req.params.userId;
+//     if (!userId)
+//       return res.status(400).json({
+//         success: false,
+//         message: "User id required",
+//       });
+
+//     const notifications = await Notification.find({ userId }).sort({
+//       createdAt: -1,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       message: "User all notifications",
+//       data: notifications,
+//     });
+//   } catch (error) {
+//     console.log("Error in getUserNotifications controller: ", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
+// Get user notifications
 export const getUserNotifications = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    if (!userId)
-      return res.status(400).json({
+    // ✅ take ID from authenticated user, not URL param
+    const userId = req.user._id;
+
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: "User id required",
+        message: "Unauthorized - user not found on request",
       });
+    }
 
     const notifications = await Notification.find({ userId }).sort({
       createdAt: -1,
@@ -58,7 +86,7 @@ export const getUserNotifications = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in getUserNotifications controller: ", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ success: false, error: "Internal server error" });
   }
 };
 

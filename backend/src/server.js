@@ -2,16 +2,20 @@ import express from "express";
 import cors from "cors";
 import env from "dotenv";
 import http from "http";
+import cookieParser from "cookie-parser";
 
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import eventRoutes from "./routes/event.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import attendeeRoutes from "./routes/attendee.routes.js";
 import ticketRoutes from "./routes/ticket.routes.js";
 import eventRegistraionRoutes from "./routes/eventRegistration.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import adminUserRoutes from "./routes/adminUser.routes.js";
 import { initSocket } from "./socket/socket.js";
 
 env.config();
@@ -19,15 +23,24 @@ env.config();
 const app = express();
 
 // middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //routes
 app.use("/api/auth", authRoutes); // authentication (login, signup, logout)
 app.use("/api/users", userRoutes); // user management (update profile, update password)
+app.use("/api/admin", adminRoutes);
+app.use("/api/attendee", attendeeRoutes);
+app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/events", eventRoutes); // event management
-app.use("/api/event", ticketRoutes); /*/api/events/:eventId/tickets*/ // tickets
+app.use("/api/events", ticketRoutes); /*/api/events/:eventId/tickets*/ // tickets
 app.use("/api", eventRegistraionRoutes); // registrations
 app.use("/api/event", feedbackRoutes); // feedback
 // chats & messages

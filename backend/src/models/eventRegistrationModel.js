@@ -20,23 +20,38 @@ const eventRegistrationSchema = new mongoose.Schema(
     quantity: {
       type: Number,
       required: true,
+      min: 1,
     },
     totalAmount: {
       type: Number,
+      required: true,
+      min: 0,
     },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid"],
       default: "pending",
     },
-    paymentMethod: String,
+    paymentMethod: {
+      type: String,
+      default: "free", // for now
+    },
+    // 🆕 logical status of the registration
+    status: {
+      type: String,
+      enum: ["active", "cancelled"],
+      default: "active",
+    },
   },
   { timestamps: true }
 );
 
-const EventRegistraion = mongoose.model(
-  "EventRegistraion",
+// prevent duplicate registration for same user + event (no double registering)
+eventRegistrationSchema.index({ userId: 1, eventId: 1 }, { unique: true });
+
+const EventRegistration = mongoose.model(
+  "EventRegistration",
   eventRegistrationSchema
 );
 
-export default EventRegistraion;
+export default EventRegistration;

@@ -46,41 +46,69 @@ export const updatePassword = async (req, res) => {
 };
 
 export const updateProfile = async (req, res) => {
-  if (!req.body?.username || !req.body?.email || !req.body?.profilePic)
-    return res.status(401).json({
-      success: false,
-      message: "username, email, profile-picture are required",
-    });
-
   try {
     const currentLoggedInUser = await User.findById(req.user._id);
-    if (!currentLoggedInUser)
+
+    if (!currentLoggedInUser) {
       return res.status(404).json({
         success: false,
         message: "User not found! Please login again",
       });
+    }
 
-    // check if user is not admin and trying to update role
-    if (currentLoggedInUser.role !== "admin")
-      return res.status(401).json({
+    const updates = { ...req.body };
+
+    // If not admin, prevent role change
+    if (currentLoggedInUser.role !== "admin" && "role" in updates) {
+      delete updates.role;
+    }
+
+    // Optional: basic sanity check so they don't clear email
+    if (updates.email === "") {
+      return res.status(400).json({
         success: false,
-        message: "Only admin can update the role",
+        message: "Email cannot be empty",
       });
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       currentLoggedInUser._id,
-      req.body,
-      { new: true }
+      updates,
+      { new: true, runValidators: true }
     ).select("-password");
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "User profile updated successfully",
       data: updatedUser,
     });
   } catch (error) {
     console.log("Error in updateProfile controller: ", error);
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+};
+
+export const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.log("Error in getCurrentUser controller: ", error);
+    return res.status(500).json({
       success: false,
       error: "Internal server error",
     });

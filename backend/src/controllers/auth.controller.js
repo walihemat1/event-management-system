@@ -3,7 +3,7 @@ import { generateToken } from "../middlewares/token.middleware.js";
 import User from "../models/userModel.js";
 
 export const register = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { email, password } = req.body;
 
   if (!email || !password)
     return res.status(400).json({
@@ -32,17 +32,13 @@ export const register = async (req, res) => {
         message: "User already exits",
       });
 
-    const newUser = await User.create({ email, username, password });
-
-    //generate token
-    // generateToken(res, newUser._id);
+    const newUser = await User.create({ email, password });
 
     res.status(201).json({
       success: true,
       message: "User created successfully",
       data: {
         email: newUser.email,
-        username: newUser.username,
         id: newUser._id,
       },
     });
@@ -80,6 +76,14 @@ export const login = async (req, res) => {
         message: "Invalid email or password",
       });
 
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account has been deactivated. Contact support or an admin.",
+      });
+    }
+
     //generate token
     const token = generateToken(res, user._id);
 
@@ -95,6 +99,7 @@ export const login = async (req, res) => {
         email: user.email,
         username: user.username,
         id: user._id,
+        role: user.role,
       },
       token,
     });
