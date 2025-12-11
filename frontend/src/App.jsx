@@ -21,11 +21,9 @@ import AdminRoutes from "./features/admin/AdminRoutes";
 import AttendeeRoutes from "./features/attendee/AttendeeRoutes";
 
 // other pages
-const Unauthorized = () => <>Unauthorized</>;
+import Unauthorized from "./pages/Unauthorized";
 
-import Dashboard from "./pages/Dashboard/UserDashboard";
 import CreateEvent from "./features/events/createEvent";
-import CategoryPage from "./features/category/categoryPage";
 import OrganizerEvents from "./pages/organizerEvents";
 import EditEventPage from "./pages/EditEvent";
 import EventRegister from "./pages/EventRegister";
@@ -75,7 +73,7 @@ export default function App() {
 
       {/* ---------- UNAUTHORIZED & FALLBACK ---------- */}
       <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="/*" element={<Navigate to="/" replace />} />
+      {/* <Route path="/*" element={<Navigate to="/" replace />} /> */}
     </Routes>
   );
 }
