@@ -1,7 +1,11 @@
 import Event from "../models/eventModel.js";
 import { isUserEventOrganizer } from "../utils/eventOrganizer.js";
-import User from "../models/userModel.js";
+import { getTicketStatsForEvent } from "../utils/ticketStats.js";
+import { getFeedbackStatsForEvent } from "../utils/feedbackStats.js";
+import { sendNotificationToUser } from "../utils/notification.js";
+import EventRegistraion from "../models/eventRegistrationModel.js";
 
+// CREATE EVENT
 export const createEvent = async (req, res) => {
   const {
     title,
@@ -19,25 +23,15 @@ export const createEvent = async (req, res) => {
     !title ||
     !description ||
     !startTime ||
-    !endTime ||
-    !location.mode ||
+    !location?.mode ||
     !categories ||
     !eventType
-  )
+  ) {
     return res.status(400).json({
       success: false,
-      message: "All fileds are required. Provide the missing fields",
-      fieldsMissing: [
-        organizerId && false,
-        title && false,
-        description && false,
-        startTime && false,
-        endTime && false,
-        location.mode && false,
-        categories && false,
-        eventType && false,
-      ].filter(Boolean),
+      message: "All fields are required. Provide the missing fields",
     });
+  }
 
   try {
     const event = await Event.create({
@@ -45,8 +39,8 @@ export const createEvent = async (req, res) => {
       title,
       description,
       status,
-      startTime: Date.now(startTime),
-      endTime: Date.now(endTime),
+      startTime,
+      endTime,
       location,
       media,
       categories,
@@ -60,24 +54,36 @@ export const createEvent = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in createEvent controller: ", error);
-    res.status(500).json({
-      success: false,
-      error: "Internal server error",
-    });
+    res.status(500).json({ success: false, error: "Internal server error" });
   }
 };
 
-// get all events
+// GET ALL EVENTS
 export const getEvents = async (req, res) => {
   try {
-    const events = await Event.find();
+    const events = await Event.find({}).populate("categories").lean();
+
+    const eventsWithStats = await Promise.all(
+      events.map(async (evt) => {
+        const [ticketStats, feedbackStats] = await Promise.all([
+          getTicketStatsForEvent(evt._id),
+          getFeedbackStatsForEvent(evt._id),
+        ]);
+
+        return {
+          ...evt,
+          ticketStats,
+          feedbackStats,
+        };
+      })
+    );
+
     res.status(200).json({
       success: true,
-      message: "All events",
-      data: events,
+      data: eventsWithStats,
     });
   } catch (error) {
-    console.log("Error in getEvents controller: ", error);
+    console.log("Error in getEvents controller:", error);
     res.status(500).json({
       success: false,
       error: "Internal server error",
@@ -85,126 +91,210 @@ export const getEvents = async (req, res) => {
   }
 };
 
-// get a single event
+// GET SINGLE EVENT
 export const getEvent = async (req, res) => {
   const { eventId } = req.params;
 
-  if (!eventId)
+  if (!eventId) {
     return res.status(400).json({
       success: false,
-      message: "Event Id is required",
+      message: "Event ID is required",
     });
+  }
 
   try {
-    const event = await Event.findById(eventId);
+    const event = await Event.findById(eventId).populate({
+      path: "categories",
+      model: "Category",
+    });
 
-    if (!event)
+    if (!event) {
       return res.status(404).json({
         success: false,
         message: "Event was not found",
       });
+    }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Event found",
       data: event,
     });
   } catch (error) {
-    console.log("Error in getEvent controller: ", error);
-    res.status(500).json({
+    console.log("Error in getEvent controller:", error);
+    return res.status(500).json({
       success: false,
       error: "Internal server error",
     });
   }
 };
 
-// update an event
+// UPDATE EVENT
 export const updateEvent = async (req, res) => {
   const { eventId } = req.params;
 
-  if (!eventId)
+  if (!eventId) {
     return res.status(400).json({
       success: false,
       message: "Event ID is required",
     });
+  }
 
   try {
-    const currentLoggedInUser = await User.findById(req.user._id);
     const event = await Event.findById(eventId);
 
-    if (!event)
+    if (!event) {
       return res.status(404).json({
         success: false,
         message: `No event found with ID ${eventId}`,
       });
+    }
 
-    // check if the user is event creator/organizer
-    await isUserEventOrganizer(event._id, currentLoggedInUser, res);
+    const authorized = await isUserEventOrganizer(event._id, req.user);
+    if (!authorized) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized - You are not the event organizer",
+      });
+    }
 
-    // update event
+    const oldEvent = event.toObject();
+
     const updatedEvent = await Event.findByIdAndUpdate(eventId, req.body, {
       new: true,
     });
 
-    if (!updatedEvent)
-      return res.status(404).json({
-        success: false,
-        message: "Event was not found",
+    // If status changed to cancelled
+    if (
+      oldEvent.status !== "cancelled" &&
+      updatedEvent.status === "cancelled"
+    ) {
+      // find all active registrations
+      const regs = await EventRegistraion.find({
+        eventId: updatedEvent._id,
+        status: { $ne: "cancelled" },
       });
 
-    res.status(200).json({
+      for (const reg of regs) {
+        await sendNotificationToUser({
+          userId: reg.userId,
+          title: "Event cancelled",
+          message: `The event "${updatedEvent.title}" has been cancelled.`,
+          eventId: updatedEvent._id,
+          type: "event",
+        });
+      }
+    }
+
+    // If date/time changed significantly
+    if (
+      oldEvent.startTime.getTime() !== updatedEvent.startTime.getTime() ||
+      (oldEvent.endTime &&
+        updatedEvent.endTime &&
+        oldEvent.endTime.getTime() !== updatedEvent.endTime.getTime())
+    ) {
+      const regs = await EventRegistraion.find({
+        eventId: updatedEvent._id,
+        status: { $ne: "cancelled" },
+      });
+
+      for (const reg of regs) {
+        await sendNotificationToUser({
+          userId: reg.userId,
+          title: "Event updated",
+          message: `The schedule for "${updatedEvent.title}" has changed. Please review the new time.`,
+          eventId: updatedEvent._id,
+          type: "event",
+        });
+      }
+    }
+
+    return res.status(200).json({
       success: true,
-      message: "Event was updated successfully",
+      message: "Event updated successfully",
       data: updatedEvent,
     });
   } catch (error) {
-    console.log("Error in updateEvent controller: ", error);
-    res.status(500).json({
+    console.log("Error in updateEvent controller:", error);
+    return res.status(500).json({
       success: false,
       error: "Internal server error",
     });
   }
 };
 
-// delete an event
+// DELETE EVENT
 export const deleteEvent = async (req, res) => {
   const { eventId } = req.params;
 
-  if (!eventId)
+  if (!eventId) {
     return res.status(400).json({
       success: false,
       message: "Event ID is required",
     });
+  }
 
   try {
-    const currentLoggedInUser = await User.findById(req.user._id);
     const event = await Event.findById(eventId);
 
-    if (!event)
+    if (!event) {
       return res.status(404).json({
         success: false,
         message: `No event found with ID ${eventId}`,
       });
+    }
 
-    // check if the user is event creator/organizer
-    await isUserEventOrganizer(event._id, currentLoggedInUser, res);
-
-    // delete event
-    const deletedEvent = await Event.findByIdAndDelete(eventId);
-
-    if (!deletedEvent)
-      return res.status(404).json({
+    const authorized = await isUserEventOrganizer(event._id, req.user);
+    if (!authorized) {
+      return res.status(403).json({
         success: false,
-        message: "Event was not found",
+        message: "Unauthorized - You are not the event organizer",
       });
+    }
 
-    res.status(204).json({
+    await Event.findByIdAndDelete(eventId);
+
+    res.status(200).json({
       success: true,
-      message: "Event was deleted successfully",
-      data: deletedEvent,
+      message: "Event deleted successfully",
     });
   } catch (error) {
-    console.log("Error in deleteEvent controller: ", error);
+    console.log("Error in deleteEvent controller:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+};
+
+// GET EVENTS OF CURRENT ORGANIZER
+export const getMyEvents = async (req, res) => {
+  try {
+    const events = await Event.find({ organizerId: req.user._id })
+      .populate("categories")
+      .lean();
+
+    const eventsWithStats = await Promise.all(
+      events.map(async (evt) => {
+        const [ticketStats, feedbackStats] = await Promise.all([
+          getTicketStatsForEvent(evt._id),
+          getFeedbackStatsForEvent(evt._id),
+        ]);
+
+        return {
+          ...evt,
+          ticketStats,
+          feedbackStats,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: eventsWithStats,
+    });
+  } catch (error) {
+    console.log("Error in getMyEvents controller:", error);
     res.status(500).json({
       success: false,
       error: "Internal server error",

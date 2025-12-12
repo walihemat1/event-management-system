@@ -1,62 +1,130 @@
-/* Declare CSS variables first */
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-  }
-}
-
-/* Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base styles */
+@layer base {
+  :root {
+    /* === Light mode palette (Event Management Brand) === */
+
+    /* Base */
+    --background: 220 40% 97%; /* soft bluish gray */
+    --foreground: 222 47% 11%; /* deep slate */
+
+    /* Surfaces */
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Muted / subtle */
+    --muted: 225 30% 94%; /* pale slate */
+    --muted-foreground: 222 17% 45%;
+
+    /* Secondary (slightly different alias of muted) */
+    --secondary: 225 30% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Primary (violet) */
+    --primary: 252 83% 65%; /* #6C5CE7 */
+    --primary-foreground: 210 40% 98%;
+
+    /* Accent (teal) */
+    --accent: 168 100% 38%; /* #00BFA6 */
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive */
+    --destructive: 347 77% 50%; /* soft red */
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders / inputs / focus */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 252 83% 65%;
+
+    /* Charts (for analytics later) */
+    --chart-1: 252 83% 65%; /* violet */
+    --chart-2: 168 81% 48%; /* teal */
+    --chart-3: 197 88% 54%; /* cyan */
+    --chart-4: 43 89% 64%; /* amber */
+    --chart-5: 347 77% 55%; /* pink-red */
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Sidebar (light) */
+    --sidebar-background: 0 0% 100%; /* white sidebar */
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 252 83% 65%; /* match primary */
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 225 30% 94%; /* hover/active bg */
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 252 83% 65%;
+  }
+
+  .dark {
+    /* === Dark mode palette === */
+
+    /* Base */
+    --background: 222 79% 6%; /* deep navy */
+    --foreground: 210 40% 98%;
+
+    /* Surfaces */
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Muted / subtle */
+    --muted: 222 47% 11%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Secondary */
+    --secondary: 222 47% 11%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Primary (lighter violet in dark for contrast) */
+    --primary: 252 87% 72%;
+    --primary-foreground: 230 40% 10%;
+
+    /* Accent (teal) */
+    --accent: 168 81% 48%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive */
+    --destructive: 347 77% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders / inputs / focus */
+    --border: 215 28% 22%;
+    --input: 215 28% 22%;
+    --ring: 252 87% 72%;
+
+    /* Charts (tuned for dark but still coherent) */
+    --chart-1: 252 87% 72%; /* violet */
+    --chart-2: 168 81% 48%; /* teal */
+    --chart-3: 197 88% 64%; /* brighter cyan */
+    --chart-4: 43 92% 68%; /* warm amber */
+    --chart-5: 347 77% 65%; /* pink-red */
+
+    /* Sidebar (dark) */
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 252 87% 72%;
+    --sidebar-primary-foreground: 230 40% 10%;
+    --sidebar-accent: 222 47% 11%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 28% 22%;
+    --sidebar-ring: 252 87% 72%;
+  }
+}
+
 @layer base {
   * {
-    /* @apply border-border; */
+    @apply border-border;
   }
+
   body {
-    /* @apply bg-background text-foreground; */
+    @apply bg-background text-foreground antialiased;
   }
 }

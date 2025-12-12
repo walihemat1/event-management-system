@@ -1,16 +1,52 @@
 import Feedback from "../models/feedbackModel.js";
 
-export const addFeedback = async (req, res) => {
-  const { eventId, userId, rating, comment } = req.body;
+import Event from "../models/eventModel.js";
+import { sendNotificationToUser } from "../utils/notification.js";
 
-  if (!eventId || !userId || !rating || !comment)
+export const addFeedback = async (req, res) => {
+  const { eventId, rating, comment } = req.body;
+
+  if (!eventId || !rating || !comment)
     return res.status(400).json({
       success: false,
       message: "All fields are required",
     });
 
   try {
-    const feedback = await Feedback.create(req.body);
+    // 🔴 Check if this user already left feedback for this event
+    const existing = await Feedback.findOne({
+      eventId,
+      userId: req.user._id,
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already provided feedback for this event",
+      });
+    }
+
+    let feedback = await Feedback.create({
+      eventId,
+      userId: req.user._id,
+      rating,
+      comment,
+    });
+
+    // 🔵 Populate user info so FE can show a name instead of "Anonymous"
+    feedback = await feedback.populate("userId", "fullName email username");
+
+    const event = await Event.findById(eventId);
+    if (event?.organizerId) {
+      await sendNotificationToUser({
+        userId: event.organizerId,
+        title: "New feedback received",
+        message: `Your event "${event.title}" received a new feedback (Rating: ${rating}/5).`,
+        eventId: event._id,
+        type: "info",
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: "Feedback was added successfully",
@@ -18,6 +54,15 @@ export const addFeedback = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in addFeedback controller: ", error);
+
+    // Handle unique index violation gracefully
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already provided feedback for this event",
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: "Internal server error",
@@ -44,7 +89,7 @@ export const getAllFeedbacks = async (req, res) => {
 
 export const getSpecificEventAllFeedbacks = async (req, res) => {
   if (!req?.params?.eventId)
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: "Event ID is required",
     });
@@ -52,7 +97,11 @@ export const getSpecificEventAllFeedbacks = async (req, res) => {
   const { eventId } = req.params;
 
   try {
-    const feedbacks = await Feedback.find({ eventId });
+    const feedbacks = await Feedback.find({ eventId }).populate(
+      "userId",
+      "fullName email username"
+    );
+
     res.status(200).json({
       success: true,
       message: `All feedbacks for Event ${eventId}`,
@@ -75,7 +124,11 @@ export const getSingleFeedback = async (req, res) => {
     });
 
   try {
-    const feedback = await Feedback.findById(req.params.feedbackId);
+    const feedback = await Feedback.findById(req.params.feedbackId).populate(
+      "userId",
+      "fullName email username"
+    );
+
     if (!feedback)
       return res.status(404).json({
         success: false,
@@ -106,7 +159,6 @@ export const updateFeedback = async (req, res) => {
   const { feedbackId } = req.params;
 
   try {
-    // find the feedback to be updated and see if it exits in DB
     const feedback = await Feedback.findById(feedbackId);
     if (!feedback)
       return res.status(404).json({
@@ -114,18 +166,17 @@ export const updateFeedback = async (req, res) => {
         message: "Feedback was not found!",
       });
 
-    // check if useris feedback provider
     if (feedback.userId.toString() !== req.user._id.toString())
       return res.status(401).json({
         success: false,
         message: "Unauthorized - User is not feedback provider",
       });
 
-    const updatedFeedback = await Feedback.findByIdAndUpdate(
+    let updatedFeedback = await Feedback.findByIdAndUpdate(
       feedbackId,
       req.body,
       { new: true }
-    );
+    ).populate("userId", "fullName email username");
 
     if (!updatedFeedback)
       return res.status(500).json({

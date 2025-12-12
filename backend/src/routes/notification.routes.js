@@ -10,7 +10,10 @@ import {
 const router = express.Router();
 
 router.post("/", authenticateUser, createNotification);
-router.get("/:userId", authenticateUser, getUserNotifications);
+
+// ✅ no userId in URL anymore
+router.get("/me", authenticateUser, getUserNotifications);
+
 router.patch("/:notificationId", authenticateUser, markAsRead);
 router.delete("/:notificationId", authenticateUser, deleteNotificaiton);
 

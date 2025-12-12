@@ -1,14 +1,9 @@
+// models/userModel.js
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema(
   {
-    username: {
-      type: String,
-      unique: [true, "Username should be unique"],
-      required: [true, "Username is required"],
-    },
-
     email: {
       type: String,
       unique: [true, "Email is should be unique"],
@@ -18,6 +13,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    fullName: {
+      type: String,
+      default: "",
+    },
+    username: {
+      type: String,
+      default: "",
+    },
     profilePic: {
       type: String,
       default: "",
@@ -26,6 +29,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["attendee", "organizer", "admin"],
       default: "attendee",
+    },
+
+    // 🆕 activation flag
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    // optional metadata (nice but not required)
+    deactivatedAt: {
+      type: Date,
+    },
+    deactivatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true }
