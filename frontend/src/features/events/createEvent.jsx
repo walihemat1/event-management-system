@@ -85,6 +85,10 @@ export default function EventForm() {
     reset,
   } = form;
 
+  // ✅ merge RHF's ref with our own refs for datetime inputs
+  const { ref: startRHFRef, ...startTimeField } = register("startTime");
+  const { ref: endRHFRef, ...endTimeField } = register("endTime");
+
   const mode = watch("mode");
   const eventType = watch("eventType");
   const categoryValue = watch("category");
@@ -206,16 +210,20 @@ export default function EventForm() {
           </p>
         </div>
 
-        {/* Dates with one functional, theme-aware calendar icon */}
+        {/* Dates with functional calendar icon */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* Start Time */}
           <div className="flex flex-col space-y-1.5">
             <Label htmlFor="startTime">Start Time</Label>
             <div className="relative">
               <Input
                 id="startTime"
                 type="datetime-local"
-                {...register("startTime")}
-                ref={startTimeRef}
+                {...startTimeField}
+                ref={(el) => {
+                  startRHFRef(el); // RHF ref
+                  startTimeRef.current = el; // local ref for showPicker
+                }}
                 className="no-native-icon pr-10"
               />
               <button
@@ -231,14 +239,18 @@ export default function EventForm() {
             </p>
           </div>
 
+          {/* End Time */}
           <div className="flex flex-col space-y-1.5">
             <Label htmlFor="endTime">End Time (optional)</Label>
             <div className="relative">
               <Input
                 id="endTime"
                 type="datetime-local"
-                {...register("endTime")}
-                ref={endTimeRef}
+                {...endTimeField}
+                ref={(el) => {
+                  endRHFRef(el);
+                  endTimeRef.current = el;
+                }}
                 className="no-native-icon pr-10"
               />
               <button
