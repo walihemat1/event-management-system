@@ -13,7 +13,8 @@ const OAUTH_TMP_COOKIE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 const getFrontendUrl = () =>
-  process.env.FRONTEND_URL || "http://localhost:5173";
+  process.env.FRONTEND_URL ||
+  "https://event-management-system-frontend-5rmn.onrender.com";
 
 const getTokenCookieOptions = () => {
   const isProd = process.env.NODE_ENV === "production";
@@ -95,7 +96,7 @@ async function findUserByProvider(provider, providerUserId) {
 async function ensureUserActive(user) {
   if (!user?.isActive) {
     const err = new Error(
-      "Your account has been deactivated. Contact support or an admin."
+      "Your account has been deactivated. Contact support or an admin.",
     );
     err.statusCode = 403;
     throw err;
@@ -164,7 +165,7 @@ export const googleCallback = async (req, res) => {
       },
       {
         redirect_uri: redirectUri,
-      }
+      },
     );
 
     // Clear temp cookies early
@@ -208,12 +209,12 @@ export const googleCallback = async (req, res) => {
 
         // Link if not already linked
         const alreadyLinked = (existingByEmail.authProviders || []).some(
-          (p) => p.provider === provider && p.providerUserId === claims.sub
+          (p) => p.provider === provider && p.providerUserId === claims.sub,
         );
         if (!alreadyLinked) {
           existingByEmail.authProviders = existingByEmail.authProviders || [];
           existingByEmail.authProviders.push(
-            providerIdentity(provider, claims)
+            providerIdentity(provider, claims),
           );
 
           // Set profile defaults only if empty (avoid overwriting user edits)
@@ -330,7 +331,7 @@ export const googleLinkCallback = async (req, res) => {
       },
       {
         redirect_uri: linkRedirectUri,
-      }
+      },
     );
 
     clearTmpCookies(res);
@@ -374,7 +375,7 @@ export const googleLinkCallback = async (req, res) => {
     await ensureUserActive(fullUser);
 
     const alreadyLinked = (fullUser.authProviders || []).some(
-      (p) => p.provider === provider && p.providerUserId === claims.sub
+      (p) => p.provider === provider && p.providerUserId === claims.sub,
     );
 
     if (!alreadyLinked) {

@@ -66,12 +66,9 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("profilePic", file);
 
-      const res = await axios.post(
-        "http://localhost:5000/api/users/upload-profile-pic",
+      const res = await axiosClient.post(
+        "/api/users/upload-profile-pic",
         formData,
-        {
-          withCredentials: true,
-        }
       );
 
       if (res.data?.success) {
@@ -114,7 +111,7 @@ export default function ProfilePage() {
   });
 
   const googleLinked = !!user?.authProviders?.some(
-    (p) => p.provider === "google"
+    (p) => p.provider === "google",
   );
 
   useEffect(() => {
@@ -182,7 +179,7 @@ export default function ProfilePage() {
               profilePic: u.profilePic,
               role: u.role,
               authProviders: u.authProviders || [],
-            })
+            }),
           );
         }
       } catch (error) {
@@ -229,7 +226,7 @@ export default function ProfilePage() {
             email: updatedUser.email,
             profilePic: updatedUser.profilePic,
             role: updatedUser.role,
-          })
+          }),
         );
 
         toast({
@@ -308,7 +305,7 @@ export default function ProfilePage() {
       const res = await axiosClient.delete("/api/auth/oauth/google/unlink");
       if (res.data?.success) {
         const remaining = (user?.authProviders || []).filter(
-          (p) => p.provider !== "google"
+          (p) => p.provider !== "google",
         );
         dispatch(updateAuthUser({ authProviders: remaining }));
         toast({
