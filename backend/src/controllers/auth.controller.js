@@ -11,6 +11,7 @@ const getTokenCookieOptions = () => {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax", // "none" required for cross-origin cookies
+    path: "/", // Explicitly set path to ensure cookie works across all routes
   };
 };
 
@@ -130,6 +131,7 @@ export const logout = async (req, res) => {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
+    path: "/",
   });
   res.status(200).json({
     success: true,
