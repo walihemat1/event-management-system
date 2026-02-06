@@ -7,10 +7,10 @@ const PORT = process.env.PORT || 5000;
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.LOCAL_MONGO_URI);
+    await mongoose.connect(process.env.MONGO_ATLAS_URI);
     console.log("DB connected...");
     expressServer.listen(PORT, () =>
-      console.log(`App is running on port ${PORT}`)
+      console.log(`App is running on port ${PORT}`),
     );
   } catch (error) {
     console.log("Error connecting DB: ", error);
