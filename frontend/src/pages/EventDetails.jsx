@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
+import { format, formatDistanceToNow } from "date-fns";
 
 import { getEvent } from "../features/events/eventsSlice";
 import {

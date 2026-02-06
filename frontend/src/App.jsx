@@ -1,5 +1,7 @@
 // src/App.jsx
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 
 import PublicLayout from "./pages/PublicLayout";
 import AppLayout from "./pages/AppLayout";
@@ -15,6 +17,7 @@ import EventsList from "./pages/EventsList";
 import EventDetails from "./pages/EventDetails";
 import Login from "./pages/Auth/Login";
 import Signup from "./pages/Auth/Signup";
+import AuthCallback from "./pages/Auth/AuthCallback";
 
 // role-based route groups
 import AdminRoutes from "./features/admin/AdminRoutes";
@@ -31,9 +34,21 @@ import MyRegistrations from "./pages/MyRegistrations";
 import OrganizerEventRegistrations from "./pages/OrganizerEventRegistrations";
 import ProfilePage from "./pages/Profile";
 
+import { bootstrapAuth } from "./features/auth/authSlice";
+
 export default function App() {
+  const dispatch = useDispatch();
+  const hasCheckedAuth = useSelector((s) => s.auth.hasCheckedAuth);
+
+  useEffect(() => {
+    if (!hasCheckedAuth) dispatch(bootstrapAuth());
+  }, [dispatch, hasCheckedAuth]);
+
   return (
     <Routes>
+      {/* ---------- OAUTH CALLBACK (NOT GATED) ---------- */}
+      <Route path="/auth/callback" element={<AuthCallback />} />
+
       {/* ---------- PUBLIC ROUTES (ONLY WHEN LOGGED OUT) ---------- */}
       <Route element={<PublicRoute />}>
         <Route element={<PublicLayout />}>

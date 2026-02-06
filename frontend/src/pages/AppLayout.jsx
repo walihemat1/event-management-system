@@ -88,7 +88,10 @@ function UserMenu() {
   const { user } = useSelector((state) => state.auth);
 
   const name =
-    user?.fullName || user?.username || user?.email.split("@")[0] || "User";
+    user?.fullName ||
+    user?.username ||
+    (user?.email ? user.email.split("@")[0] : null) ||
+    "User";
   const email = user?.email || "";
   const initials =
     (user?.fullName && user.fullName[0]) ||
@@ -108,8 +111,12 @@ function UserMenu() {
           variant="ghost"
           className="flex items-center gap-3 px-2 sm:px-3 rounded-full"
         >
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.avatarUrl || ""} alt={name} />
+          <Avatar className="h-8 w-8 object-cover">
+            <AvatarImage
+              src={user?.profilePic || ""}
+              alt={name}
+              className="object-cover"
+            />
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
               {initials.toUpperCase()}
             </AvatarFallback>

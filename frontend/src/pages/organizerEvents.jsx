@@ -1,5 +1,5 @@
 // src/pages/OrganizerEvents.jsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -14,17 +14,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Star, MoreHorizontal, CalendarDays } from "lucide-react";
+import { Star, MoreHorizontal, CalendarDays, Loader } from "lucide-react";
 
 import DeleteEvent from "../features/events/DeleteEvent";
+import { publishEvent } from "../features/events/eventsSlice";
 
 export default function OrganizerEvents() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isPublished, setIsPublished] = useState(false);
 
   const { myList: myEvents = [], isLoading } = useSelector(
     (state) => state.events
   );
+
+  const handlePublishEvent = (eventId) => {
+    dispatch(publishEvent(eventId));
+  };
+
+  useEffect(() => {
+    setIsPublished(myEvents.some((e) => e.isPublished));
+  }, [myEvents]);
 
   useEffect(() => {
     dispatch(getMyEvents());
@@ -126,6 +136,12 @@ export default function OrganizerEvents() {
                       Edit
                     </DropdownMenuItem>
 
+                    <DropdownMenuItem
+                      onClick={() => handlePublishEvent(event._id)}
+                    >
+                      {event.isPublished ? "Unpublish" : "Publish"}
+                    </DropdownMenuItem>
+
                     <DeleteEvent eventId={event._id} title={event.title} />
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -191,6 +207,7 @@ export default function OrganizerEvents() {
               <th className="py-3 px-4 text-left font-medium">End</th>
               <th className="py-3 px-4 text-left font-medium">Status</th>
               <th className="py-3 px-4 text-left font-medium">Rating</th>
+              <th className="py-3 px-4 text-left font-medium">Published</th>
               <th className="py-3 px-4 text-left font-medium">Actions</th>
             </tr>
           </thead>
@@ -239,6 +256,8 @@ export default function OrganizerEvents() {
                           ? "default"
                           : event.status === "cancelled"
                           ? "destructive"
+                          : event.status === "ended"
+                          ? "outline"
                           : "secondary"
                       }
                     >
@@ -263,6 +282,21 @@ export default function OrganizerEvents() {
                         No reviews
                       </span>
                     )}
+                  </td>
+
+                  {/* Publication Status */}
+                  <td className="py-3 px-4">
+                    <Badge
+                      variant={event?.isPublished ? "success" : "secondary"}
+                    >
+                      {isLoading ? (
+                        <Loader className="h-3.5 w-3.5 animate-spin" />
+                      ) : event?.isPublished ? (
+                        "Published"
+                      ) : (
+                        "Unpublished"
+                      )}
+                    </Badge>
                   </td>
 
                   <td className="py-3 px-4">
@@ -304,6 +338,13 @@ export default function OrganizerEvents() {
                           onClick={() => navigate(`/events/${event._id}/edit`)}
                         >
                           Edit
+                        </DropdownMenuItem>
+
+                        {/* Publish/Unpublish */}
+                        <DropdownMenuItem
+                          onClick={() => handlePublishEvent(event._id)}
+                        >
+                          {event?.isPublished ? "Unpublish" : "Publish"}
                         </DropdownMenuItem>
 
                         {/* DELETE */}

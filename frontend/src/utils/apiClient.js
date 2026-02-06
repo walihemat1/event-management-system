@@ -8,6 +8,7 @@ export async function apiClient(url, options = {}, getState) {
 
   const res = await fetch(`http://localhost:5000/api${url}`, {
     ...options,
+    credentials: "include",
     headers,
   });
 

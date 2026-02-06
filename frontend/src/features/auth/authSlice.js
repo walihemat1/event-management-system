@@ -2,26 +2,52 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosClient from "../../app/axiosClient";
 
-const storedAuth = localStorage.getItem("auth");
-const initialAuth = storedAuth ? JSON.parse(storedAuth) : null;
-
 const initialState = {
-  user: initialAuth?.user || null,
-  token: initialAuth?.token || null,
-  role: initialAuth?.role || null,
-  isAuthenticated: !!initialAuth?.token,
+  user: null,
+  token: null,
+  role: null,
+  isAuthenticated: false,
   isLoading: false,
+  hasCheckedAuth: false,
   error: null,
 };
 
-const persistAuth = (state) => {
-  const authToStore = {
-    user: state.user,
-    token: state.token,
-    role: state.role,
+const normalizeUser = (u) => {
+  if (!u) return null;
+  return {
+    ...u,
+    id: u.id || u._id,
   };
-  localStorage.setItem("auth", JSON.stringify(authToStore));
 };
+
+/* ===================== SESSION BOOTSTRAP ===================== */
+export const bootstrapAuth = createAsyncThunk(
+  "auth/bootstrapAuth",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axiosClient.get("/api/auth/me");
+      const data = res.data;
+
+      if (!data?.success) {
+        return rejectWithValue(data?.message || "Not authenticated");
+      }
+
+      return normalizeUser(data.data);
+    } catch (err) {
+      // If we get 401 here, it simply means "not logged in" (cookie missing/expired)
+      if (err.response?.status === 401) {
+        return rejectWithValue("UNAUTHENTICATED");
+      }
+
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to check session";
+      return rejectWithValue(msg);
+    }
+  }
+);
 
 /* ===================== REGISTER ===================== */
 export const register = createAsyncThunk(
@@ -90,15 +116,12 @@ export const loginUser = createAsyncThunk(
 
       const token = data.token;
 
-      const authToStore = {
+      // Cookie is the primary auth mechanism. We keep token in memory only.
+      return {
         user,
         token,
         role: user.role || null,
       };
-
-      localStorage.setItem("auth", JSON.stringify(authToStore));
-
-      return authToStore;
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -123,7 +146,6 @@ export const logoutUser = createAsyncThunk(
         return rejectWithValue(data.message || "Logout failed");
       }
 
-      localStorage.removeItem("auth");
       return true;
     } catch (err) {
       const msg =
@@ -146,8 +168,8 @@ const authSlice = createSlice({
       state.role = null;
       state.isAuthenticated = false;
       state.isLoading = false;
+      state.hasCheckedAuth = true;
       state.error = null;
-      localStorage.removeItem("auth");
     },
 
     updateAuthUser: (state, action) => {
@@ -156,13 +178,38 @@ const authSlice = createSlice({
       state.user = { ...state.user, ...updated };
 
       if (updated.role) state.role = updated.role;
-
-      persistAuth(state);
     },
   },
 
   extraReducers: (builder) => {
     builder
+      /* -------- BOOTSTRAP -------- */
+      .addCase(bootstrapAuth.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(bootstrapAuth.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        state.hasCheckedAuth = true;
+        state.user = action.payload;
+        state.role = action.payload?.role || null;
+        state.isAuthenticated = true;
+      })
+      .addCase(bootstrapAuth.rejected, (state, action) => {
+        state.isLoading = false;
+        state.hasCheckedAuth = true;
+        // Treat missing/expired cookie as logged out (no scary error)
+        state.error =
+          action.payload === "UNAUTHENTICATED"
+            ? null
+            : action.payload || "Failed to check session";
+        state.user = null;
+        state.token = null;
+        state.role = null;
+        state.isAuthenticated = false;
+      })
+
       /* -------- REGISTER -------- */
       .addCase(register.pending, (state) => {
         state.isLoading = true;
@@ -189,12 +236,13 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.role = action.payload.role;
         state.isAuthenticated = true;
-        persistAuth(state);
+        state.hasCheckedAuth = true;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || "Login failed";
         state.isAuthenticated = false;
+        state.hasCheckedAuth = true;
       })
 
       /* -------- LOGOUT -------- */
@@ -208,11 +256,12 @@ const authSlice = createSlice({
         state.token = null;
         state.role = null;
         state.isAuthenticated = false;
+        state.hasCheckedAuth = true;
         state.error = null;
-        localStorage.removeItem("auth");
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.isLoading = false;
+        state.hasCheckedAuth = true;
         state.error = action.payload || "Logout failed";
       });
   },

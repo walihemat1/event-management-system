@@ -5,8 +5,11 @@ import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { store } from "./app/store";
+import { setupAxiosInterceptors } from "./app/axiosClient";
 import { Toaster } from "@/components/ui/toaster";
 import "./index.css";
+
+setupAxiosInterceptors(store);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

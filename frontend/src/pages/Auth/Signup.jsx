@@ -19,6 +19,8 @@ import { register } from "../../features/auth/authSlice";
 import { useToast } from "@/components/ui/use-toast";
 import { Sparkles, Users } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const formSchema = z
   .object({
     email: z.string().email("Invalid email"),
@@ -44,6 +46,10 @@ const Signup = () => {
   const navigate = useNavigate();
   const { isLoading } = useSelector((state) => state.auth);
   const { toast } = useToast();
+
+  const handleGoogleSignup = () => {
+    window.location.href = `${API_BASE}/api/auth/oauth/google/start`;
+  };
 
   const onSubmit = (data) => {
     dispatch(register({ email: data.email, password: data.password }))
@@ -128,6 +134,7 @@ const Signup = () => {
                 className="mt-6 w-full gap-3"
                 type="button"
                 variant="outline"
+                onClick={handleGoogleSignup}
               >
                 <GoogleLogo />
                 Continue with Google

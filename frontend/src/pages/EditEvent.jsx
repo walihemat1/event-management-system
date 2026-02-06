@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import { Calendar, CheckCircle2, ArrowLeft } from "lucide-react";
 
 import { getEvent, updateEvent } from "../features/events/eventsSlice";
 import { getCategories } from "../features/category/categorySlice";
+import EventBannerUploader from "../features/events/EventBannerUploader";
 
 // same schema as create, now with status
 const eventSchema = z.object({
@@ -42,6 +44,7 @@ const eventSchema = z.object({
   mode: z.enum(["physical", "virtual"]),
   address: z.string().optional(),
   link: z.string().optional(),
+  bannerUrl: z.string().optional(),
   category: z.string().min(1, "Select a category"),
   status: z.enum(["upcoming", "ongoing", "ended", "cancelled"], {
     required_error: "Select a status",
@@ -52,11 +55,13 @@ export default function EditEvent() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { eventId } = useParams();
+  const { toast } = useToast();
 
   const { current: event, isLoading } = useSelector((state) => state.events);
   const { list: categories } = useSelector((state) => state.category);
 
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [bannerBusy, setBannerBusy] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(eventSchema),
@@ -69,6 +74,7 @@ export default function EditEvent() {
       mode: "physical",
       address: "",
       link: "",
+      bannerUrl: "",
       category: "",
       status: "upcoming",
     },
@@ -87,6 +93,7 @@ export default function EditEvent() {
   const eventType = watch("eventType");
   const categoryValue = watch("category");
   const statusValue = watch("status");
+  const bannerUrl = watch("bannerUrl");
 
   // load event + categories
   useEffect(() => {
@@ -137,6 +144,7 @@ export default function EditEvent() {
       mode: modeValue,
       address: location.address || "",
       link: location.link || "",
+      bannerUrl: event?.media?.bannerUrl || "",
       category: categoryId,
       status: event.status || "upcoming",
     });
@@ -158,10 +166,9 @@ export default function EditEvent() {
         address: values.mode === "physical" ? values.address : "",
         link: values.mode === "virtual" ? values.link : "",
       },
-      media: event?.media || {
-        bannerUrl: "",
-        gallery: [],
-        videos: [],
+      media: {
+        ...(event?.media || { gallery: [], videos: [] }),
+        bannerUrl: values.bannerUrl || "",
       },
     };
 
@@ -170,6 +177,11 @@ export default function EditEvent() {
       setShowSuccessDialog(true);
     } catch (err) {
       console.error("Failed to update event", err);
+      toast({
+        title: "Update failed",
+        description: err?.message || "Failed to update event",
+        variant: "destructive",
+      });
     }
   };
 
@@ -231,6 +243,22 @@ export default function EditEvent() {
           </Button>
         </div>
 
+        {/* Banner (RHF source of truth: `bannerUrl` string) */}
+        <div className="space-y-2">
+          <input type="hidden" {...register("bannerUrl")} />
+          <EventBannerUploader
+            value={bannerUrl}
+            disabled={bannerBusy}
+            onBusyChange={setBannerBusy}
+            onChange={(url) =>
+              setValue("bannerUrl", url || "", {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+          />
+        </div>
+
         {/* Title */}
         <div className="flex flex-col space-y-1.5">
           <Label htmlFor="title">Event Title</Label>
@@ -267,12 +295,13 @@ export default function EditEvent() {
                 id="startTime"
                 type="datetime-local"
                 {...register("startTime")}
-                className="no-native-icon pr-10"
+                className="pr-3 dark:pr-10"
               />
               <button
                 type="button"
                 onClick={() => openPickerById("startTime")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Open start time picker"
+                className="hidden dark:inline-flex absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Calendar className="h-4 w-4" />
               </button>
@@ -289,12 +318,13 @@ export default function EditEvent() {
                 id="endTime"
                 type="datetime-local"
                 {...register("endTime")}
-                className="no-native-icon pr-10"
+                className="pr-3 dark:pr-10"
               />
               <button
                 type="button"
                 onClick={() => openPickerById("endTime")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Open end time picker"
+                className="hidden dark:inline-flex absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Calendar className="h-4 w-4" />
               </button>
@@ -410,10 +440,15 @@ export default function EditEvent() {
             variant="outline"
             onClick={handleBack}
             className="w-full sm:w-auto"
+            disabled={bannerBusy}
           >
             Cancel
           </Button>
-          <Button type="submit" className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            className="w-full sm:w-auto"
+            disabled={bannerBusy}
+          >
             Save changes
           </Button>
         </div>

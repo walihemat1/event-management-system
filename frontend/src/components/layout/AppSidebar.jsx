@@ -1,5 +1,5 @@
 // src/components/layout/AppSidebar.jsx
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
@@ -11,6 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -22,6 +23,7 @@ import {
   LogOut,
   TicketIcon,
   Users,
+  X,
 } from "lucide-react";
 
 import { logoutUser } from "@/features/auth/authSlice";
@@ -49,6 +51,7 @@ const attendeeItems = [
 export function AppSidebar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isMobile, setOpen } = useSidebar();
   const { user } = useSelector((state) => state.auth);
 
@@ -70,6 +73,9 @@ export function AppSidebar() {
 
   const menuItems = user?.role === "admin" ? adminItems : attendeeItems;
 
+  const isItemActive = (url) =>
+    !!matchPath({ path: url, end: false }, location.pathname);
+
   return (
     <Sidebar className="border-r bg-sidebar-background text-sidebar-foreground">
       <SidebarContent className="flex h-full flex-col gap-2 p-3">
@@ -86,6 +92,19 @@ export function AppSidebar() {
               Manage your events
             </span>
           </div>
+          {isMobile && (
+            <div className="ml-auto justify-end flex mb-auto">
+              <SidebarTrigger asChild>
+                <button
+                  type="button"
+                  className="p-1 rounded-lg hover:bg-accent transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Toggle sidebar</span>
+                </button>
+              </SidebarTrigger>
+            </div>
+          )}
         </div>
 
         <SidebarGroup>
@@ -98,19 +117,21 @@ export function AppSidebar() {
               {user &&
                 menuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        onClick={handleNavClick}
-                        className={({ isActive }) =>
-                          [
-                            "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                            isActive
-                              ? "bg-primary/10 text-primary shadow-sm border border-primary/30"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                          ].join(" ")
-                        }
-                      >
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isItemActive(item.url)}
+                      onClick={handleNavClick}
+                      className={[
+                        "gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        // default (inactive)
+                        "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        // active (light)
+                        "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:border data-[active=true]:border-primary/30",
+                        // active (dark) - slightly stronger for contrast
+                        "dark:data-[active=true]:bg-primary/20 dark:data-[active=true]:text-foreground dark:data-[active=true]:border-primary/40",
+                      ].join(" ")}
+                    >
+                      <NavLink to={item.url}>
                         <item.icon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{item.title}</span>
                       </NavLink>

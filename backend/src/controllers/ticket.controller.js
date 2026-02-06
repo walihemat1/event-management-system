@@ -1,5 +1,6 @@
 // controllers/ticket.controller.js
 import Ticket from "../models/ticketModel.js";
+import Event from "../models/eventModel.js";
 import { isUserEventOrganizer } from "../utils/eventOrganizer.js";
 
 // Helper: basic validation
@@ -52,6 +53,29 @@ export const createTicket = async (req, res) => {
       quantityAvailable,
       quantitySold: 0,
     });
+
+    if (!newTicket) {
+      return res.status(500).json({
+        success: false,
+        message: "Something went wrong creating the ticket",
+      });
+    }
+
+    // const updateEvent = await Event.findByIdAndUpdate(
+    //   eventId,
+    //   {
+    //     isPublished: true,
+    //   },
+    //   { new: true }
+    // );
+
+    // if (!updateEvent) {
+    //   await Ticket.findByIdAndDelete(newTicket._id);
+    //   return res.status(500).json({
+    //     success: false,
+    //     message: "Something went wrong publishing the event",
+    //   });
+    // }
 
     res.status(201).json({
       success: true,

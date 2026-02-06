@@ -13,11 +13,14 @@ import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../../features/auth/authSlice";
 import { useToast } from "@/components/ui/use-toast";
 import { CalendarClock, Sparkles } from "lucide-react";
+import { useEffect } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const formSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -35,8 +38,45 @@ const Login = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { isLoading } = useSelector((state) => state.auth);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const oauth = params.get("oauth");
+    const provider = params.get("provider");
+    if (!oauth) return;
+
+    if (oauth === "cancelled") {
+      toast({
+        title: "Google sign-in cancelled",
+        description: "No worries — you can try again anytime.",
+      });
+    } else if (oauth === "expired") {
+      toast({
+        variant: "destructive",
+        title: "Sign-in expired",
+        description: "Please try signing in with Google again.",
+      });
+    } else if (oauth === "failed") {
+      toast({
+        variant: "destructive",
+        title: "Google sign-in failed",
+        description:
+          "Please try again. If it keeps happening, contact support.",
+      });
+    } else if (provider) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in failed",
+        description: "Please try again.",
+      });
+    }
+  }, [params, toast]);
+
+  const handleGoogleLogin = () => {
+    window.location.href = `${API_BASE}/api/auth/oauth/google/start`;
+  };
 
   const onSubmit = (data) => {
     dispatch(loginUser({ email: data.email, password: data.password }))
@@ -130,6 +170,7 @@ const Login = () => {
                 className="mt-6 w-full gap-3"
                 type="button"
                 variant="outline"
+                onClick={handleGoogleLogin}
               >
                 <GoogleLogo />
                 Continue with Google

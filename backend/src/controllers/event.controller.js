@@ -5,6 +5,20 @@ import { getFeedbackStatsForEvent } from "../utils/feedbackStats.js";
 import { sendNotificationToUser } from "../utils/notification.js";
 import EventRegistraion from "../models/eventRegistrationModel.js";
 
+// Derive status based on time
+const deriveStatus = (evt) => {
+  if (!evt) return "upcoming";
+  if (evt.isCancelled || evt.status === "cancelled") return "cancelled";
+
+  const now = new Date();
+  const start = evt.startTime ? new Date(evt.startTime) : null;
+  const end = evt.endTime ? new Date(evt.endTime) : null;
+
+  if (start && now < start) return "upcoming";
+  if (end && now >= end) return "ended";
+  return "ongoing";
+};
+
 // CREATE EVENT
 export const createEvent = async (req, res) => {
   const {
@@ -50,7 +64,10 @@ export const createEvent = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Event was created successfully",
-      data: event,
+      data: {
+        ...event.toObject(),
+        status: deriveStatus(event),
+      },
     });
   } catch (error) {
     console.log("Error in createEvent controller: ", error);
@@ -61,7 +78,9 @@ export const createEvent = async (req, res) => {
 // GET ALL EVENTS
 export const getEvents = async (req, res) => {
   try {
-    const events = await Event.find({}).populate("categories").lean();
+    const events = await Event.find({ isPublished: true })
+      .populate("categories")
+      .lean();
 
     const eventsWithStats = await Promise.all(
       events.map(async (evt) => {
@@ -72,6 +91,7 @@ export const getEvents = async (req, res) => {
 
         return {
           ...evt,
+          status: deriveStatus(evt),
           ticketStats,
           feedbackStats,
         };
@@ -115,10 +135,22 @@ export const getEvent = async (req, res) => {
       });
     }
 
+    const authorized = await isUserEventOrganizer(event._id, req.user);
+
+    if (!event.isPublished && !authorized) {
+      return res.status(403).json({
+        success: false,
+        message: "Event is not published and you are not the organizer",
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "Event found",
-      data: event,
+      data: {
+        ...event.toObject(),
+        status: deriveStatus(event),
+      },
     });
   } catch (error) {
     console.log("Error in getEvent controller:", error);
@@ -212,7 +244,10 @@ export const updateEvent = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Event updated successfully",
-      data: updatedEvent,
+      data: {
+        ...updatedEvent.toObject(),
+        status: deriveStatus(updatedEvent),
+      },
     });
   } catch (error) {
     console.log("Error in updateEvent controller:", error);
@@ -283,6 +318,7 @@ export const getMyEvents = async (req, res) => {
 
         return {
           ...evt,
+          status: deriveStatus(evt),
           ticketStats,
           feedbackStats,
         };
@@ -296,6 +332,66 @@ export const getMyEvents = async (req, res) => {
   } catch (error) {
     console.log("Error in getMyEvents controller:", error);
     res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+};
+
+export const publishEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: "Event ID is required",
+      });
+    }
+
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    const authorized = await isUserEventOrganizer(event._id, req.user);
+    if (!authorized) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized - You are not the event organizer",
+      });
+    }
+
+    const isPublished = event.isPublished ? false : true;
+
+    const updatedEvent = await Event.findByIdAndUpdate(
+      eventId,
+      { isPublished: isPublished },
+      { new: true }
+    ).populate("categories");
+
+    if (!updatedEvent) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to publish event",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Event published successfully",
+      data: {
+        ...updatedEvent.toObject(),
+        status: deriveStatus(updatedEvent),
+      },
+    });
+  } catch (error) {
+    console.log("Error in publishEvent controller:", error);
+    return res.status(500).json({
       success: false,
       error: "Internal server error",
     });

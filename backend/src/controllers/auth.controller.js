@@ -2,6 +2,18 @@ import validator from "validator";
 import { generateToken } from "../middlewares/token.middleware.js";
 import User from "../models/userModel.js";
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+const getTokenCookieOptions = () => {
+  const isProd = process.env.NODE_ENV === "production";
+  return {
+    maxAge: THIRTY_DAYS_MS,
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+  };
+};
+
 export const register = async (req, res) => {
   const { email, password } = req.body;
 
@@ -87,10 +99,7 @@ export const login = async (req, res) => {
     //generate token
     const token = generateToken(res, user._id);
 
-    res.cookie("token", token, {
-      maxAge: 24 * 7 * 60 * 60 * 1000,
-      httpOnly: process.env.NODE_ENV === "production" ? true : false,
-    });
+    res.cookie("token", token, getTokenCookieOptions());
 
     res.status(200).json({
       success: true,
@@ -100,6 +109,8 @@ export const login = async (req, res) => {
         username: user.username,
         id: user._id,
         role: user.role,
+        fullName: user.fullName,
+        profilePic: user.profilePic,
       },
       token,
     });
@@ -113,9 +124,38 @@ export const login = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  res.cookie("token", "");
+  // Clear cookie using same cookie attributes to ensure browser removes it.
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   res.status(200).json({
     success: true,
     message: "Logged out successfully",
   });
+};
+
+export const me = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.log("Error in me controller: ", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
 };

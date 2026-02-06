@@ -1,7 +1,6 @@
 // src/components/event/EventForm.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -29,25 +28,11 @@ import {
 
 import { Calendar, CheckCircle2 } from "lucide-react";
 
+import { eventSchema } from "./eventSchema";
 import { createEvent } from "./eventsSlice";
 import { getCategories } from "../category/categorySlice";
-
-// ✔ ZOD SCHEMA (simple, no endTime enforcement)
-const eventSchema = z.object({
-  title: z.string().min(3, "Title is required"),
-  description: z.string().min(10, "Description is required"),
-
-  startTime: z.string().min(1, "Start date is required"),
-  endTime: z.string().optional(),
-
-  eventType: z.enum(["free", "paid"]),
-  mode: z.enum(["physical", "virtual"]),
-
-  address: z.string().optional(),
-  link: z.string().optional(),
-
-  category: z.string().min(1, "Select a category"),
-});
+import { toDateTimeLocalValue, addDays } from "@/utils/dateTime";
+import EventBannerUploader from "./EventBannerUploader";
 
 export default function EventForm() {
   const dispatch = useDispatch();
@@ -56,23 +41,36 @@ export default function EventForm() {
   const { list: categories } = useSelector((state) => state.category);
 
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [bannerBusy, setBannerBusy] = useState(false);
 
   // refs for datetime inputs so icon can open the picker
   const startTimeRef = useRef(null);
   const endTimeRef = useRef(null);
+
+  const baseNow = React.useMemo(() => {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    return d;
+  }, []);
+
+  const nowLocalMin = React.useMemo(
+    () => toDateTimeLocalValue(baseNow),
+    [baseNow]
+  );
 
   const form = useForm({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       title: "",
       description: "",
-      startTime: "",
-      endTime: "",
+      startTime: nowLocalMin,
+      endTime: toDateTimeLocalValue(addDays(baseNow, 1)),
       eventType: "free",
       mode: "physical",
       address: "",
       link: "",
       category: "",
+      bannerUrl: "",
     },
   });
 
@@ -85,13 +83,29 @@ export default function EventForm() {
     reset,
   } = form;
 
-  // ✅ merge RHF's ref with our own refs for datetime inputs
+  // merge RHF's ref with our own refs for datetime inputs
   const { ref: startRHFRef, ...startTimeField } = register("startTime");
   const { ref: endRHFRef, ...endTimeField } = register("endTime");
 
   const mode = watch("mode");
   const eventType = watch("eventType");
   const categoryValue = watch("category");
+  const startTimeValue = watch("startTime");
+  const endTimeValue = watch("endTime");
+  const bannerUrl = watch("bannerUrl");
+
+  // Enforce end >= start in the UI (in addition to schema validation)
+  useEffect(() => {
+    if (!startTimeValue || !endTimeValue) return;
+
+    const start = new Date(startTimeValue);
+    const end = new Date(endTimeValue);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+
+    if (end < start) {
+      setValue("endTime", startTimeValue, { shouldValidate: true });
+    }
+  }, [startTimeValue, endTimeValue, setValue]);
 
   // load categories
   useEffect(() => {
@@ -105,8 +119,11 @@ export default function EventForm() {
       organizerId: user?._id || user?.id,
       title: values.title,
       description: values.description,
-      startTime: values.startTime,
-      endTime: values.endTime || null,
+      // Convert datetime-local (no timezone) to ISO for backend consistency
+      startTime: new Date(values.startTime).toISOString(),
+      endTime: values.endTime
+        ? new Date(values.endTime).toISOString()
+        : undefined,
       eventType: values.eventType,
       categories: values.category,
       location: {
@@ -115,7 +132,7 @@ export default function EventForm() {
         link: values.mode === "virtual" ? values.link : "",
       },
       media: {
-        bannerUrl: "",
+        bannerUrl: values.bannerUrl || "",
         gallery: [],
         videos: [],
       },
@@ -183,6 +200,24 @@ export default function EventForm() {
           </Button>
         </div>
 
+        {/* Banner (RHF source of truth: `bannerUrl` string) */}
+        <div className="space-y-2">
+          {/* Ensure `bannerUrl` is registered so it appears in RHF `values` */}
+          <input type="hidden" {...register("bannerUrl")} />
+
+          <EventBannerUploader
+            value={bannerUrl}
+            disabled={bannerBusy}
+            onBusyChange={setBannerBusy}
+            onChange={(url) =>
+              setValue("bannerUrl", url || "", {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+          />
+        </div>
+
         {/* Title */}
         <div className="flex flex-col space-y-1.5">
           <Label htmlFor="title">Event Title</Label>
@@ -224,12 +259,14 @@ export default function EventForm() {
                   startRHFRef(el); // RHF ref
                   startTimeRef.current = el; // local ref for showPicker
                 }}
-                className="no-native-icon pr-10"
+                min={nowLocalMin}
+                className="pr-3 dark:pr-10"
               />
               <button
                 type="button"
                 onClick={() => openPicker(startTimeRef)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Open start time picker"
+                className="hidden dark:inline-flex absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Calendar className="h-4 w-4" />
               </button>
@@ -251,12 +288,14 @@ export default function EventForm() {
                   endRHFRef(el);
                   endTimeRef.current = el;
                 }}
-                className="no-native-icon pr-10"
+                min={startTimeValue || nowLocalMin}
+                className="pr-3 dark:pr-10"
               />
               <button
                 type="button"
                 onClick={() => openPicker(endTimeRef)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Open end time picker"
+                className="hidden dark:inline-flex absolute right-3 top-1/2 -translate-y-1/2 p-0 m-0 border-none bg-transparent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Calendar className="h-4 w-4" />
               </button>
@@ -347,10 +386,15 @@ export default function EventForm() {
             variant="outline"
             onClick={handleBack}
             className="w-full sm:w-auto"
+            disabled={bannerBusy}
           >
             Cancel
           </Button>
-          <Button type="submit" className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            className="w-full sm:w-auto"
+            disabled={bannerBusy}
+          >
             Create Event
           </Button>
         </div>

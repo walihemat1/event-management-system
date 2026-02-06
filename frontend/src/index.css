@@ -128,3 +128,13 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* ------------------------------------------------------------
+   Datetime input UX
+   - Light mode: use the browser's native calendar icon
+   - Dark mode: hide the native icon and use our custom calendar button
+------------------------------------------------------------ */
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  display: none;
+}

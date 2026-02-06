@@ -1,4 +1,5 @@
 // src/features/event/eventsSlice.js
+import axiosClient from "@/app/axiosClient";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
@@ -125,6 +126,25 @@ export const deleteEvent = createAsyncThunk(
   }
 );
 
+// Publish Event
+export const publishEvent = createAsyncThunk(
+  "events/publish",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/events/${eventId}/publish`,
+        {},
+        { withCredentials: true }
+      );
+      return res.data;
+    } catch (err) {
+      if (err.response && err.response.data)
+        return rejectWithValue(err.response.data);
+      return rejectWithValue({ message: err.message });
+    }
+  }
+);
+
 // ----------------------
 // Slice
 // ----------------------
@@ -232,6 +252,22 @@ const eventsSlice = createSlice({
       .addCase(deleteEvent.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload?.message || "Failed to delete event";
+      })
+
+      // Publish
+      .addCase(publishEvent.pending, (state, action) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(publishEvent.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.myList = state.myList.map((e) =>
+          e._id === action.payload.data._id ? action.payload.data : e
+        );
+      })
+      .addCase(publishEvent.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || "Failed to publish event";
       });
   },
 });

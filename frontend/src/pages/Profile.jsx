@@ -1,9 +1,11 @@
 // src/pages/Profile/ProfilePage.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import axios from "axios";
 import axiosClient from "../app/axiosClient";
 import { updateAuthUser } from "../features/auth/authSlice";
 import { useToast } from "@/components/ui/use-toast";
+import { useSearchParams } from "react-router-dom";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,15 +17,88 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Camera, Loader2 } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export default function ProfilePage() {
   const dispatch = useDispatch();
   const { toast } = useToast();
+  const [params] = useSearchParams();
   const { user } = useSelector((state) => state.auth);
 
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Handle profile picture upload
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, or WebP image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append("profilePic", file);
+
+      const res = await axios.post(
+        "http://localhost:5000/api/users/upload-profile-pic",
+        formData,
+        {
+          withCredentials: true,
+        }
+      );
+
+      if (res.data?.success) {
+        const newUrl = res.data.data.profilePic;
+
+        setProfileForm((prev) => ({ ...prev, profilePic: newUrl }));
+
+        dispatch(updateAuthUser({ profilePic: newUrl }));
+
+        toast({
+          title: "Profile picture updated",
+          description: "Your profile picture has been updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast({
+        title: "Upload failed",
+        description: error.response?.data?.message || error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+      // Reset file input
+      event.target.value = "";
+    }
+  };
 
   const [profileForm, setProfileForm] = useState({
     fullName: "",
@@ -37,6 +112,51 @@ export default function ProfilePage() {
     newPassword: "",
     confirmPassword: "",
   });
+
+  const googleLinked = !!user?.authProviders?.some(
+    (p) => p.provider === "google"
+  );
+
+  useEffect(() => {
+    const oauth = params.get("oauth");
+    const linked = params.get("linked");
+    const provider = params.get("provider");
+
+    if (linked === "google") {
+      toast({
+        title: "Google linked",
+        description: "Your Google account is now connected.",
+      });
+      return;
+    }
+
+    if (!oauth) return;
+
+    if (oauth === "cancelled") {
+      toast({
+        title: "Linking cancelled",
+        description: "Google account was not linked.",
+      });
+    } else if (oauth === "expired") {
+      toast({
+        variant: "destructive",
+        title: "Linking expired",
+        description: "Please try linking Google again.",
+      });
+    } else if (oauth === "failed") {
+      toast({
+        variant: "destructive",
+        title: "Linking failed",
+        description: "Please try again.",
+      });
+    } else if (provider) {
+      toast({
+        variant: "destructive",
+        title: "Linking failed",
+        description: "Please try again.",
+      });
+    }
+  }, [params, toast]);
 
   // Load current user from backend (in case local state is stale)
   useEffect(() => {
@@ -61,6 +181,7 @@ export default function ProfilePage() {
               email: u.email,
               profilePic: u.profilePic,
               role: u.role,
+              authProviders: u.authProviders || [],
             })
           );
         }
@@ -178,6 +299,35 @@ export default function ProfilePage() {
     }
   };
 
+  const handleLinkGoogle = () => {
+    window.location.href = `${API_BASE}/api/auth/oauth/google/link/start`;
+  };
+
+  const handleUnlinkGoogle = async () => {
+    try {
+      const res = await axiosClient.delete("/api/auth/oauth/google/unlink");
+      if (res.data?.success) {
+        const remaining = (user?.authProviders || []).filter(
+          (p) => p.provider !== "google"
+        );
+        dispatch(updateAuthUser({ authProviders: remaining }));
+        toast({
+          title: "Google unlinked",
+          description: "Your Google account has been unlinked.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Unlink failed",
+        description:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* PROFILE INFO */}
@@ -189,7 +339,78 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-5 space-y-3">
+            <p className="text-sm font-medium">Connected accounts</p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-sm">
+                <p className="font-medium">Google</p>
+                <p className="text-xs text-muted-foreground">
+                  {googleLinked ? "Connected" : "Not connected"}
+                </p>
+              </div>
+              {googleLinked ? (
+                <Button
+                  variant="destructive"
+                  type="button"
+                  onClick={handleUnlinkGoogle}
+                >
+                  Unlink
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleLinkGoogle}
+                >
+                  Link Google
+                </Button>
+              )}
+            </div>
+            <Separator />
+          </div>
+
           <form onSubmit={handleProfileSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Profile Picture</Label>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage
+                    src={profileForm.profilePic}
+                    alt={profileForm.fullName}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="text-2xl">
+                    {profileForm.fullName?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <Input
+                    type="file"
+                    id="profile-picture-upload"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleProfilePictureUpload}
+                    disabled={uploadingImage || loadingProfile}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      document.getElementById("profile-picture-upload")?.click()
+                    }
+                    disabled={uploadingImage || loadingProfile}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    {uploadingImage ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      "Change Photo"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input

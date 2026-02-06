@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { format, formatDistanceToNow } from "date-fns";
 
 export default function EventBrowse() {
   const dispatch = useDispatch();
@@ -99,10 +100,14 @@ export default function EventBrowse() {
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "TBA";
     const d = new Date(dateStr);
-    return d.toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    // return d.toLocaleString(undefined, {
+    //   dateStyle: "medium",
+    //   timeStyle: "short",
+    // });
+    // Relative time (e.g., "in 3 days" / "2 hours ago") plus an exact date.
+    const relative = formatDistanceToNow(d, { addSuffix: true });
+    const exact = format(d, "EEE, MMM d • h:mm a");
+    return `${relative} (${exact})`;
   };
 
   const getCardImageUrl = (event) => {
@@ -231,7 +236,7 @@ export default function EventBrowse() {
   const getStatusBadgeVariant = (status) => {
     if (status === "ongoing") return "default";
     if (status === "cancelled") return "destructive";
-    if (status === "ended") return "outline";
+    if (status === "ended") return "destructive"; // uses a distinct background color
     return "secondary"; // upcoming or unknown
   };
 
@@ -241,18 +246,18 @@ export default function EventBrowse() {
         {/* Header / Hero */}
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-3">
-            <div className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+            {/* <div className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
               <span className="mr-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Upcoming & ongoing events
-            </div>
+            </div> */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
                 Discover Events
               </h1>
-              <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-2xl">
+              {/* <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-2xl">
                 Explore curated experiences for organizers and attendees.
                 Search, filter, and register in just a few clicks.
-              </p>
+              </p> */}
             </div>
           </div>
 
