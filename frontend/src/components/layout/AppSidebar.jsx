@@ -52,7 +52,7 @@ export function AppSidebar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isMobile, setOpen } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { user } = useSelector((state) => state.auth);
 
   const initials =
@@ -61,12 +61,12 @@ export function AppSidebar() {
     "U";
 
   const handleNavClick = () => {
-    if (isMobile) setOpen(false);
+    if (isMobile) setOpenMobile(false);
   };
 
   const handleLogout = () => {
     dispatch(logoutUser()).then(() => {
-      if (isMobile) setOpen(false);
+      if (isMobile) setOpenMobile(false);
       navigate("/login");
     });
   };
@@ -120,7 +120,6 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isItemActive(item.url)}
-                      onClick={handleNavClick}
                       className={[
                         "gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                         // default (inactive)
@@ -131,7 +130,7 @@ export function AppSidebar() {
                         "dark:data-[active=true]:bg-primary/20 dark:data-[active=true]:text-foreground dark:data-[active=true]:border-primary/40",
                       ].join(" ")}
                     >
-                      <NavLink to={item.url}>
+                      <NavLink to={item.url} onClick={handleNavClick}>
                         <item.icon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{item.title}</span>
                       </NavLink>
