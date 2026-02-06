@@ -1,3 +1,5 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://event-management-system-syey.onrender.com";
+
 export async function apiClient(url, options = {}, getState) {
   const token = getState()?.auth?.token;
   const headers = {
@@ -6,7 +8,7 @@ export async function apiClient(url, options = {}, getState) {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`http://localhost:5000/api${url}`, {
+  const res = await fetch(`${API_BASE_URL}/api${url}`, {
     ...options,
     credentials: "include",
     headers,

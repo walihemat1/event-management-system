@@ -13,6 +13,22 @@ export function setupAxiosInterceptors(store) {
   if (interceptorsAttached) return;
   interceptorsAttached = true;
 
+  // Request interceptor: Add Authorization header with token from Redux store
+  axiosClient.interceptors.request.use(
+    (config) => {
+      const state = store?.getState();
+      const token = state?.auth?.token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    },
+  );
+
+  // Response interceptor: Handle 401 errors
   axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {

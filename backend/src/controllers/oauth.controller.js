@@ -22,7 +22,7 @@ const getTokenCookieOptions = () => {
     maxAge: THIRTY_DAYS_MS,
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax", // "none" required for cross-origin cookies
   };
 };
 
@@ -32,7 +32,7 @@ const getTmpCookieOptions = () => {
     maxAge: OAUTH_TMP_COOKIE_MAX_AGE_MS,
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax", // "none" required for cross-origin cookies
     path: "/",
   };
 };
@@ -42,13 +42,13 @@ function clearTmpCookies(res) {
   res.clearCookie("oauth_state", {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
     path: "/",
   });
   res.clearCookie("oauth_code_verifier", {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
     path: "/",
   });
 }
