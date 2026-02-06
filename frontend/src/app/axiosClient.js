@@ -2,7 +2,8 @@ import axios from "axios";
 import { resetAuthState } from "../features/auth/authSlice";
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:5000",
+  // baseURL: "http://localhost:5000",
+  baseURL: "https://event-management-system-syey.onrender.com",
   withCredentials: true,
 });
 
@@ -24,7 +25,7 @@ export function setupAxiosInterceptors(store) {
         }
       }
       return Promise.reject(error);
-    }
+    },
   );
 }
 
