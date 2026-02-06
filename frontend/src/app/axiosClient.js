@@ -33,9 +33,18 @@ export function setupAxiosInterceptors(store) {
     (response) => response,
     (error) => {
       // If session cookie is missing/expired, force app state to logged-out.
+      // BUT: Don't reset during bootstrap (hasCheckedAuth = false) - let bootstrapAuth handle it
       if (error?.response?.status === 401) {
         try {
-          store?.dispatch(resetAuthState());
+          const state = store?.getState();
+          const hasCheckedAuth = state?.auth?.hasCheckedAuth;
+          const isBootstrapRequest = error?.config?.url?.includes("/api/auth/me");
+          
+          // Only reset if auth has been checked (not during initial bootstrap)
+          // OR if it's not the bootstrap request (other API calls failing)
+          if (hasCheckedAuth || !isBootstrapRequest) {
+            store?.dispatch(resetAuthState());
+          }
         } catch {
           // ignore
         }
