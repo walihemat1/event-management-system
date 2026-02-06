@@ -1,23 +1,18 @@
 // src/redux/category/categorySlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-
-const API = axios.create({
-  baseURL: "http://localhost:5000/api/categories",
-  withCredentials: true,
-});
+import axiosClient from "@/app/axiosClient";
 
 // GET ALL
 export const getCategories = createAsyncThunk(
   "category/getAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await API.get("/");
+      const res = await axiosClient.get("/api/categories");
       return res.data.data; // array of categories
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 // CREATE
@@ -25,12 +20,12 @@ export const createCategory = createAsyncThunk(
   "category/create",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await API.post("/", values);
+      const res = await axiosClient.post("/api/categories", values);
       return res.data.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 // UPDATE
@@ -38,12 +33,12 @@ export const updateCategory = createAsyncThunk(
   "category/update",
   async ({ id, values }, { rejectWithValue }) => {
     try {
-      const res = await API.patch(`/${id}`, values);
+      const res = await axiosClient.patch(`/api/categories/${id}`, values);
       return res.data.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 // DELETE
@@ -51,12 +46,12 @@ export const deleteCategory = createAsyncThunk(
   "category/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await API.delete(`/${id}`);
+      await axiosClient.delete(`/api/categories${id}`);
       return id; // return deleted ID to update state
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 const initialState = {
@@ -91,7 +86,7 @@ const categorySlice = createSlice({
       })
       .addCase(updateCategory.fulfilled, (state, action) => {
         const index = state.list.findIndex(
-          (cat) => cat._id === action.payload._id
+          (cat) => cat._id === action.payload._id,
         );
         if (index !== -1) state.list[index] = action.payload;
       })

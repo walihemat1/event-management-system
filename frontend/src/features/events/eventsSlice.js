@@ -1,7 +1,6 @@
 // src/features/event/eventsSlice.js
 import axiosClient from "@/app/axiosClient";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
 
 // ----------------------
 // Async thunks
@@ -12,20 +11,14 @@ export const createEvent = createAsyncThunk(
   "events/create",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/events",
-        payload,
-        {
-          withCredentials: true, // send cookie if JWT is in cookie
-        }
-      );
+      const res = await axiosClient.post("/api/events", payload);
       return res.data;
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
 // Get All Events
@@ -33,16 +26,14 @@ export const getEvents = createAsyncThunk(
   "events/getAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get("http://localhost:5000/api/events", {
-        withCredentials: true,
-      });
+      const res = await axiosClient.get("/api/events");
       return res.data;
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
 // Get Single Event
@@ -50,19 +41,14 @@ export const getEvent = createAsyncThunk(
   "events/getSingle",
   async (eventId, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/events/${eventId}`,
-        {
-          withCredentials: true,
-        }
-      );
+      const res = await axiosClient.get(`/api/events/${eventId}`);
       return res.data;
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
 // Get Events for current logged-in user
@@ -70,19 +56,14 @@ export const getMyEvents = createAsyncThunk(
   "events/getMine",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        "http://localhost:5000/api/events/my-events",
-        {
-          withCredentials: true,
-        }
-      );
+      const res = await axiosClient.get("/api/events/my-events");
       return res.data; // { success, message, data: [...] }
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
 // Update Event
@@ -90,20 +71,14 @@ export const updateEvent = createAsyncThunk(
   "events/update",
   async ({ eventId, payload }, { rejectWithValue }) => {
     try {
-      const res = await axios.patch(
-        `http://localhost:5000/api/events/${eventId}`,
-        payload,
-        {
-          withCredentials: true,
-        }
-      );
+      const res = await axiosClient.patch(`/api/events/${eventId}`, payload);
       return res.data;
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
 // Delete Event
@@ -111,19 +86,14 @@ export const deleteEvent = createAsyncThunk(
   "events/delete",
   async (eventId, { rejectWithValue }) => {
     try {
-      const res = await axios.delete(
-        `http://localhost:5000/api/events/${eventId}`,
-        {
-          withCredentials: true,
-        }
-      );
+      const res = await axiosClient.delete(`/api/events/${eventId}`);
       return { eventId, ...res.data };
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
 // Publish Event
@@ -131,23 +101,16 @@ export const publishEvent = createAsyncThunk(
   "events/publish",
   async (eventId, { rejectWithValue }) => {
     try {
-      const res = await axios.post(
-        `http://localhost:5000/api/events/${eventId}/publish`,
-        {},
-        { withCredentials: true }
-      );
+      const res = await axiosClient.post(`/api/events/${eventId}/publish`, {});
       return res.data;
     } catch (err) {
       if (err.response && err.response.data)
         return rejectWithValue(err.response.data);
       return rejectWithValue({ message: err.message });
     }
-  }
+  },
 );
 
-// ----------------------
-// Slice
-// ----------------------
 const initialState = {
   list: [],
   myList: [],
@@ -226,7 +189,7 @@ const eventsSlice = createSlice({
       .addCase(updateEvent.fulfilled, (state, action) => {
         state.isLoading = false;
         state.list = state.list.map((e) =>
-          e._id === action.payload.data._id ? action.payload.data : e
+          e._id === action.payload.data._id ? action.payload.data : e,
         );
       })
       .addCase(updateEvent.rejected, (state, action) => {
@@ -262,7 +225,7 @@ const eventsSlice = createSlice({
       .addCase(publishEvent.fulfilled, (state, action) => {
         state.isLoading = false;
         state.myList = state.myList.map((e) =>
-          e._id === action.payload.data._id ? action.payload.data : e
+          e._id === action.payload.data._id ? action.payload.data : e,
         );
       })
       .addCase(publishEvent.rejected, (state, action) => {
